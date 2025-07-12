@@ -6,6 +6,8 @@ export default class GameScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text
   private laneIndex = 0 // -2 (left) to 2 (right)
   private obstacleGroup!: Phaser.Physics.Arcade.Group
+  private timeEvents: Phaser.Time.TimerEvent[] = []
+  private isGameOver = false
 
   constructor() {
     super('GameScene')
@@ -41,20 +43,33 @@ export default class GameScene extends Phaser.Scene {
     this.obstacleGroup = this.physics.add.group()
 
     // Increment score every second
-    this.time.addEvent({
-      delay: 1000,
-      loop: true,
-      callback: this.addScore,
-      callbackScope: this
-    })
+    this.timeEvents.push(
+      this.time.addEvent({
+        delay: 1000,
+        loop: true,
+        callback: this.addScore,
+        callbackScope: this
+      })
+    )
 
     // Spawn obstacles regularly
-    this.time.addEvent({
-      delay: 800,
-      loop: true,
-      callback: this.spawnObstacle,
-      callbackScope: this
-    })
+    this.timeEvents.push(
+      this.time.addEvent({
+        delay: 800,
+        loop: true,
+        callback: this.spawnObstacle,
+        callbackScope: this
+      })
+    )
+
+    // Detect collision between player and obstacles
+    this.physics.add.collider(
+      this.player,
+      this.obstacleGroup,
+      this.onPlayerHit,
+      undefined,
+      this
+    )
   }
 
   private addScore(): void {
@@ -95,6 +110,26 @@ export default class GameScene extends Phaser.Scene {
     body.setImmovable(true)
 
     this.obstacleGroup.add(obstacle)
+  }
+
+  private onPlayerHit(): void {
+    if (this.isGameOver) {
+      return
+    }
+
+    this.isGameOver = true
+
+    // Stop all active timer events
+    if (this.timeEvents.length > 0) {
+      this.time.removeEvent(this.timeEvents)
+      this.timeEvents = []
+    }
+
+    // Disable further player input
+    this.input.off('pointerdown', this.handlePointerDown, this)
+
+    // Transition to ResultScene with final score
+    this.scene.start('ResultScene', { score: this.score })
   }
 
   update(): void {
