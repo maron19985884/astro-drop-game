@@ -121,7 +121,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Stop all active timer events
     if (this.timeEvents.length > 0) {
-      this.time.removeEvent(this.timeEvents)
+      this.timeEvents.forEach((e) => this.time.removeEvent(e))
       this.timeEvents = []
     }
 
