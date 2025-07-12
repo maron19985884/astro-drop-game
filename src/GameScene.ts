@@ -5,6 +5,7 @@ export default class GameScene extends Phaser.Scene {
   private score = 0
   private scoreText!: Phaser.GameObjects.Text
   private laneIndex = 0 // -2 (left) to 2 (right)
+  private obstacleGroup!: Phaser.Physics.Arcade.Group
 
   constructor() {
     super('GameScene')
@@ -16,6 +17,9 @@ export default class GameScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale
+
+    // Basic background
+    this.add.rectangle(width / 2, height / 2, width, height, 0x101020)
 
     // Create player as a simple rectangle placeholder
     this.player = this.add.rectangle(width / 2, height * 0.8, 40, 60, 0x00ff00)
@@ -33,11 +37,22 @@ export default class GameScene extends Phaser.Scene {
       color: '#ffffff'
     }).setOrigin(1, 0)
 
+    // Create obstacle group
+    this.obstacleGroup = this.physics.add.group()
+
     // Increment score every second
     this.time.addEvent({
       delay: 1000,
       loop: true,
       callback: this.addScore,
+      callbackScope: this
+    })
+
+    // Spawn obstacles regularly
+    this.time.addEvent({
+      delay: 800,
+      loop: true,
+      callback: this.spawnObstacle,
       callbackScope: this
     })
   }
@@ -65,7 +80,29 @@ export default class GameScene extends Phaser.Scene {
     this.player.setX(x)
   }
 
+  private spawnObstacle(): void {
+    const { width, height } = this.scale
+    const lane = Phaser.Math.Between(-2, 2)
+    const segmentWidth = width / 5
+    const index = lane + 2
+    const x = segmentWidth * (index + 0.5)
+
+    const obstacle = this.add.rectangle(x, height + 20, 40, 40, 0xff0000)
+    this.physics.add.existing(obstacle)
+    const body = obstacle.body as Phaser.Physics.Arcade.Body
+    body.setVelocityY(-150)
+    body.setAllowGravity(false)
+    body.setImmovable(true)
+
+    this.obstacleGroup.add(obstacle)
+  }
+
   update(): void {
-    // Game logic will be added later
+    this.obstacleGroup.getChildren().forEach((child) => {
+      const obj = child as Phaser.GameObjects.Rectangle
+      if (obj.y + obj.height / 2 < 0) {
+        this.obstacleGroup.remove(obj, true, true)
+      }
+    })
   }
 }
